@@ -159,6 +159,13 @@ async def cookies_command(client: Client, message: Message):
             "Tip: You can export cookies using browser extensions like 'EditThisCookie' in JSON format."
         )
         return
+        
+    # If the user uploaded an ALREADY-formatted Netscape Cookies file, just save it!
+    if json_str.strip().startswith("# Netscape HTTP Cookie File"):
+        with open("cookies.txt", "w") as f:
+            f.write(json_str)
+        await message.reply_text("✅ Netscape cookies successfully saved! You can now use `/ytdl` to download restricted videos.")
+        return
     
     # Clean the JSON string from common Telegram copy-paste artifacts
     # Extract only the part starting from [ and ending at ] containing objects
