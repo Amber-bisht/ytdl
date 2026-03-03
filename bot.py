@@ -38,12 +38,16 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+# Global dictionary to track cancellation status per chat
+cancel_flags = {}
+
 @app.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     welcome_text = (
         "Hello! I am a YouTube Playlist Downloader Bot.\n\n"
         "1. `/index <url>` - List all videos in a playlist with their index.\n"
-        "2. `/ytdl <url> [start-end]` - Download the playlist (e.g. `/ytdl <url> 1-10`).\n\n"
+        "2. `/ytdl <url> [start-end]` - Download the playlist (e.g. `/ytdl <url> 1-10`).\n"
+        "3. `/cancel` - Abort an active playlist download process.\n\n"
         "Usage:\n"
         "`/ytdl https://www.youtube.com/playlist?list=...`"
     )
@@ -93,6 +97,15 @@ def get_caption(video_number: int, title: str, part_info: str = "") -> str:
         caption = caption[:1020] + "..."
     return caption
 
+@app.on_message(filters.command("cancel"))
+async def cancel_command(client: Client, message: Message):
+    chat_id = message.chat.id
+    if cancel_flags.get(chat_id, False) is False: # It might be None or False
+        cancel_flags[chat_id] = True
+        await message.reply_text("Cancelling current operation after the current task finishes...")
+    else:
+        await message.reply_text("No active downloads to cancel or already cancelling.")
+
 @app.on_message(filters.command("ytdl"))
 async def ytdl_command(client: Client, message: Message):
     if len(message.command) < 2:
@@ -100,6 +113,7 @@ async def ytdl_command(client: Client, message: Message):
         return
     
     url = message.command[1]
+    chat_id = message.chat.id
     
     # Parse range if provided
     start_idx = 0
@@ -136,7 +150,13 @@ async def ytdl_command(client: Client, message: Message):
         
     await status_msg.edit_text(f"Found {len(all_entries)} videos. Downloading {len(entries)} videos (from {start_idx + 1} to {end_idx})...")
     
+    cancel_flags[chat_id] = False
+    
     for relative_idx, entry in enumerate(entries):
+        if cancel_flags.get(chat_id):
+            await status_msg.edit_text("🛑 Operation cancelled by user.")
+            break
+            
         idx = start_idx + relative_idx
         vid_url = entry.get('url') or entry.get('webpage_url')
         if not vid_url:
@@ -168,6 +188,9 @@ async def ytdl_command(client: Client, message: Message):
             continue
             
         for part_idx, part_path in enumerate(parts):
+            if cancel_flags.get(chat_id):
+                break
+                
             part_info = ""
             if len(parts) > 1:
                 part_info = f"(Part {part_idx + 1}/{len(parts)})"
@@ -201,7 +224,10 @@ async def ytdl_command(client: Client, message: Message):
         if os.path.exists(file_path): os.remove(file_path)
         if thumb_path and os.path.exists(thumb_path): os.remove(thumb_path)
         
-    await status_msg.edit_text(f"**Success!** All {len(entries)} videos have been processed and uploaded.")
+    if cancel_flags.get(chat_id):
+        cancel_flags[chat_id] = False # Reset
+    else:
+        await status_msg.edit_text(f"**Success!** All {len(entries)} videos have been processed and uploaded.")
 
 if __name__ == "__main__":
     print("Starting health check server on port 6666...")
