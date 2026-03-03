@@ -6,3 +6,7 @@ __pycache__/
 .git/
 downloads/
 cookies.txt
+*.session-journal
+*.session
+user_settings.db
+test_downloads/
