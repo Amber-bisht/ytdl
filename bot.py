@@ -161,11 +161,8 @@ async def cookies_command(client: Client, message: Message):
         return
     
     # Clean the JSON string from common Telegram copy-paste artifacts
-    # Remove lines like "Name, [03/03/26 6:49 PM]"
-    json_str = re.sub(r'^[A-Z][A-Z0-9_ ]*, \[.*\]\n?', '', json_str, flags=re.MULTILINE)
-    
-    # Extract only the part starting from [ and ending at ]
-    match = re.search(r'(\[.*\])', json_str, re.DOTALL)
+    # Extract only the part starting from [ and ending at ] containing objects
+    match = re.search(r'(\[\s*\{.*\}\s*\])', json_str, re.DOTALL)
     if match:
         json_str = match.group(1)
     
