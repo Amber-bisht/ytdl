@@ -33,10 +33,7 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
         'nopart': True,
         'geo_bypass': True,
         'ffmpeg_location': '/opt/homebrew/bin/ffmpeg' if os.path.exists('/opt/homebrew/bin/ffmpeg') else None,
-        'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-        }
+        'nocheckcertificate': True,
     }
     
     if os.path.exists("cookies.txt"):
