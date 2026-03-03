@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # Install system dependencies (ffmpeg + deno requirements)
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl unzip && \
+    apt-get install -y ffmpeg curl unzip gcc libc6-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
