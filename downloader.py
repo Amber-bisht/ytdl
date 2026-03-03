@@ -23,7 +23,8 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
     """Download a single video in 1080p and its thumbnail, returning metadata."""
     os.makedirs(output_dir, exist_ok=True)
     ydl_opts = {
-        'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best',
+        'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
+        'merge_output_format': 'mp4',
         'outtmpl': os.path.join(output_dir, '%(id)s.%(ext)s'),
         'writethumbnail': True,
         'postprocessors': [{'key': 'FFmpegThumbnailsConvertor', 'format': 'jpg'}],
@@ -31,6 +32,7 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
         'no_warnings': True,
         'nopart': True,
         'geo_bypass': True,
+        'ffmpeg_location': '/opt/homebrew/bin/ffmpeg' if os.path.exists('/opt/homebrew/bin/ffmpeg') else None,
         'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
