@@ -1,0 +1,50 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Registry
+        # Uncomment and provide these secrets in your repository settings:
+        # uses: docker/login-action@v2
+        # with:
+        #   username: ${{ secrets.DOCKER_USERNAME }}
+        #   password: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "Skipping docker login. Uncomment the step above for real registry."
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false # Change to `true` to push to your registry
+          tags: ${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            echo "${{ secrets.ENV_FILE }}" > .env
+            docker pull ${{ github.repository }}:latest
+            docker stop ytdl-bot || true
+            docker rm ytdl-bot || true
+            docker run -d --name ytdl-bot \
+              -p 6666:6666 \
+              --env-file .env \
+              --restart unless-stopped \
+              ${{ github.repository }}:latest
