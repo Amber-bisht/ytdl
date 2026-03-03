@@ -6,6 +6,7 @@ from pyrogram.types import Message
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+import re
 
 from downloader import async_extract_playlist_info, async_download_video
 from splitter import split_video
@@ -108,36 +109,78 @@ async def cancel_command(client: Client, message: Message):
     else:
         await message.reply_text("No active downloads to cancel or already cancelling.")
 
-@app.on_message(filters.command("cookies"))
+def save_cookies_as_netscape(cookies):
+    with open("cookies.txt", "w") as f:
+        f.write("# Netscape HTTP Cookie File\n")
+        for cookie in cookies:
+            domain = cookie.get("domain", "")
+            include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+            path = cookie.get("path", "/")
+            secure = "TRUE" if cookie.get("secure") else "FALSE"
+            expiry = cookie.get("expirationDate", 0)
+            try:
+                expiry = str(int(expiry))
+            except:
+                expiry = "0"
+            name = cookie.get("name", "")
+            value = cookie.get("value", "")
+            # Tab separated values
+            f.write(f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}\n")
+
+@app.on_message(filters.command("cookies") & filters.private)
 async def cookies_command(client: Client, message: Message):
-    if len(message.command) < 2:
-        await message.reply_text("Please provide the JSON cookies string. Usage: /cookies <json_array>")
+    json_str = ""
+    
+    # Case 1: File upload with /cookies caption
+    if message.document:
+        status_msg = await message.reply_text("Downloading cookie file...")
+        file_path = await message.download()
+        with open(file_path, "r") as f:
+            json_str = f.read()
+        os.remove(file_path)
+        await status_msg.delete()
+    # Case 2: Reply to a document with /cookies
+    elif message.reply_to_message and message.reply_to_message.document:
+        status_msg = await message.reply_text("Downloading cookie file...")
+        file_path = await message.reply_to_message.download()
+        with open(file_path, "r") as f:
+            json_str = f.read()
+        os.remove(file_path)
+        await status_msg.delete()
+    # Case 3: Text input
+    elif len(message.command) >= 2:
+        json_str = message.text.split(None, 1)[1]
+    else:
+        await message.reply_text(
+            "Please provide the JSON cookies string or upload a file with `/cookies` as caption.\n\n"
+            "Tip: You can export cookies using browser extensions like 'EditThisCookie' in JSON format."
+        )
         return
     
-    # Extract the JSON part
-    json_str = message.text.split(None, 1)[1]
+    # Clean the JSON string from common Telegram copy-paste artifacts
+    # Remove lines like "Name, [03/03/26 6:49 PM]"
+    json_str = re.sub(r'^[A-Z][A-Z0-9_ ]*, \[.*\]\n?', '', json_str, flags=re.MULTILINE)
+    
+    # Extract only the part starting from [ and ending at ]
+    match = re.search(r'(\[.*\])', json_str, re.DOTALL)
+    if match:
+        json_str = match.group(1)
     
     try:
         cookies = json.loads(json_str)
-        with open("cookies.txt", "w") as f:
-            f.write("# Netscape HTTP Cookie File\n")
-            for cookie in cookies:
-                domain = cookie.get("domain", "")
-                include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
-                path = cookie.get("path", "/")
-                secure = "TRUE" if cookie.get("secure") else "FALSE"
-                expiry = cookie.get("expirationDate", 0)
-                try:
-                    expiry = str(int(expiry))
-                except:
-                    expiry = "0"
-                name = cookie.get("name", "")
-                value = cookie.get("value", "")
-                f.write(f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}\n")
-                
-        await message.reply_text("✅ Cookies successfully converted and saved! Try downloading again.")
+        if not isinstance(cookies, list):
+            await message.reply_text("❌ Cookies must be a JSON array `[...]`.")
+            return
+            
+        save_cookies_as_netscape(cookies)
+        await message.reply_text("✅ Cookies successfully saved! You can now use `/ytdl` to download restricted videos.")
     except Exception as e:
-        await message.reply_text(f"❌ Failed to parse or save cookies. Please provide a valid JSON array. Error: {e}")
+        await message.reply_text(f"❌ Failed to parse cookies. Error: {e}\n\nMake sure you are sending a valid JSON array.")
+
+@app.on_message(filters.document & filters.private)
+async def document_handler(client: Client, message: Message):
+    if message.caption and message.caption.startswith("/cookies"):
+        await cookies_command(client, message)
 
 @app.on_message(filters.command("ytdl"))
 async def ytdl_command(client: Client, message: Message):
