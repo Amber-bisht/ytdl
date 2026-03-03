@@ -8,7 +8,7 @@ def extract_playlist_info(url: str) -> List[Dict[str, Any]]:
     ydl_opts = {
         'extract_flat': True,
         'quiet': True,
-        'extractor_args': {'youtube': {'player_client': ['ios']}},
+        'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web']}},
     }
     
     if os.path.exists("cookies.txt"):
@@ -34,7 +34,7 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
         'geo_bypass': True,
         'ffmpeg_location': '/opt/homebrew/bin/ffmpeg' if os.path.exists('/opt/homebrew/bin/ffmpeg') else None,
         'nocheckcertificate': True,
-        'extractor_args': {'youtube': {'player_client': ['ios']}},
+        'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web']}},
     }
     
     if os.path.exists("cookies.txt"):
