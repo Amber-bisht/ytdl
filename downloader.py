@@ -25,7 +25,6 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
     os.makedirs(output_dir, exist_ok=True)
     ydl_opts = {
         'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-        'merge_output_format': 'mp4',
         'outtmpl': os.path.join(output_dir, '%(id)s.%(ext)s'),
         'writethumbnail': True,
         'postprocessors': [{'key': 'FFmpegThumbnailsConvertor', 'format': 'jpg'}],
