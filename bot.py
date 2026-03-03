@@ -32,6 +32,9 @@ if not all([API_ID, API_HASH, BOT_TOKEN]):
     print("Please set API_ID, API_HASH, and BOT_TOKEN in .env file.")
     exit(1)
 
+AUTHORIZED_CHAT_ID = 8548171555
+auth_filter = filters.chat(AUTHORIZED_CHAT_ID)
+
 # Initialize the Pyrogram Client
 app = Client(
     "ytdl_bot",
@@ -43,7 +46,7 @@ app = Client(
 # Global dictionary to track cancellation status per chat
 cancel_flags = {}
 
-@app.on_message(filters.command("start"))
+@app.on_message(filters.command("start") & auth_filter)
 async def start_command(client: Client, message: Message):
     welcome_text = (
         "Hello! I am a YouTube Playlist Downloader Bot.\n\n"
@@ -56,7 +59,7 @@ async def start_command(client: Client, message: Message):
     )
     await message.reply_text(welcome_text)
 
-@app.on_message(filters.command("index"))
+@app.on_message(filters.command("index") & auth_filter)
 async def index_command(client: Client, message: Message):
     if len(message.command) < 2:
         await message.reply_text("Please provide a YouTube URL. Usage: /index <url>")
@@ -100,7 +103,7 @@ def get_caption(video_number: int, title: str, part_info: str = "") -> str:
         caption = caption[:1020] + "..."
     return caption
 
-@app.on_message(filters.command("cancel"))
+@app.on_message(filters.command("cancel") & auth_filter)
 async def cancel_command(client: Client, message: Message):
     chat_id = message.chat.id
     if cancel_flags.get(chat_id, False) is False: # It might be None or False
@@ -127,7 +130,7 @@ def save_cookies_as_netscape(cookies):
             # Tab separated values
             f.write(f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}\n")
 
-@app.on_message(filters.command("cookies") & filters.private)
+@app.on_message(filters.command("cookies") & filters.private & auth_filter)
 async def cookies_command(client: Client, message: Message):
     json_str = ""
     
@@ -177,12 +180,12 @@ async def cookies_command(client: Client, message: Message):
     except Exception as e:
         await message.reply_text(f"❌ Failed to parse cookies. Error: {e}\n\nMake sure you are sending a valid JSON array.")
 
-@app.on_message(filters.document & filters.private)
+@app.on_message(filters.document & filters.private & auth_filter)
 async def document_handler(client: Client, message: Message):
     if message.caption and message.caption.startswith("/cookies"):
         await cookies_command(client, message)
 
-@app.on_message(filters.command("ytdl"))
+@app.on_message(filters.command("ytdl") & auth_filter)
 async def ytdl_command(client: Client, message: Message):
     if len(message.command) < 2:
         await message.reply_text("Please provide a YouTube URL. Usage: /ytdl <url> [start-end]")
