@@ -5,6 +5,7 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
 
 from downloader import async_extract_playlist_info, async_download_video
 from splitter import split_video
@@ -47,7 +48,8 @@ async def start_command(client: Client, message: Message):
         "Hello! I am a YouTube Playlist Downloader Bot.\n\n"
         "1. `/index <url>` - List all videos in a playlist with their index.\n"
         "2. `/ytdl <url> [start-end]` - Download the playlist (e.g. `/ytdl <url> 1-10`).\n"
-        "3. `/cancel` - Abort an active playlist download process.\n\n"
+        "3. `/cancel` - Abort an active playlist download process.\n"
+        "4. `/cookies [json]` - Set YouTube cookies (JSON format) to bypass blocks.\n\n"
         "Usage:\n"
         "`/ytdl https://www.youtube.com/playlist?list=...`"
     )
@@ -105,6 +107,37 @@ async def cancel_command(client: Client, message: Message):
         await message.reply_text("Cancelling current operation after the current task finishes...")
     else:
         await message.reply_text("No active downloads to cancel or already cancelling.")
+
+@app.on_message(filters.command("cookies"))
+async def cookies_command(client: Client, message: Message):
+    if len(message.command) < 2:
+        await message.reply_text("Please provide the JSON cookies string. Usage: /cookies <json_array>")
+        return
+    
+    # Extract the JSON part
+    json_str = message.text.split(None, 1)[1]
+    
+    try:
+        cookies = json.loads(json_str)
+        with open("cookies.txt", "w") as f:
+            f.write("# Netscape HTTP Cookie File\n")
+            for cookie in cookies:
+                domain = cookie.get("domain", "")
+                include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+                path = cookie.get("path", "/")
+                secure = "TRUE" if cookie.get("secure") else "FALSE"
+                expiry = cookie.get("expirationDate", 0)
+                try:
+                    expiry = str(int(expiry))
+                except:
+                    expiry = "0"
+                name = cookie.get("name", "")
+                value = cookie.get("value", "")
+                f.write(f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}\n")
+                
+        await message.reply_text("✅ Cookies successfully converted and saved! Try downloading again.")
+    except Exception as e:
+        await message.reply_text(f"❌ Failed to parse or save cookies. Please provide a valid JSON array. Error: {e}")
 
 @app.on_message(filters.command("ytdl"))
 async def ytdl_command(client: Client, message: Message):

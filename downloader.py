@@ -9,6 +9,10 @@ def extract_playlist_info(url: str) -> List[Dict[str, Any]]:
         'extract_flat': True,
         'quiet': True,
     }
+    
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = "cookies.txt"
+        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         if 'entries' in info:
@@ -32,6 +36,9 @@ def download_video(url: str, output_dir: str = ".") -> Dict[str, Any]:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
         }
     }
+    
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = "cookies.txt"
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
